@@ -1,0 +1,3 @@
+[submodule "lottery_app"]
+	path = lottery_app
+	url = https://github.com/Yuji-ctrl/lotteryAppMobile.git
