@@ -1,0 +1,14 @@
+{
+    "name": "Progate-2026", // お好みの名前
+    "build": {
+        "dockerfile": "./Dockerfile" // 相対パス表記
+    },
+      "runArgs": [
+    "--cap-add=SYS_PTRACE",
+    "--security-opt",
+    "seccomp=unconfined",
+    "-v", "/run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock",
+    "-e", "SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock"
+  ],
+  "postStartCommand": "git config --global --unset gpg.ssh.program || true"
+}
