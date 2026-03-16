@@ -1,0 +1,700 @@
+openapi: 3.0.3
+info:
+  title: Digital Ichiban Kuji API
+  version: 1.0.0
+  description: |
+    デジタル一番くじのバックエンドAPI仕様。
+    - 認証: Cognito JWTを想定（Bearer）
+    - 位置検証: 100m以内（Haversine）
+    - 冪等制御: idempotencyKeyで重複抽選を防止
+    - レート制限: 1ユーザーあたり 10 req/sec（API Gateway設定）
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://stg-api.example.com/v1
+    description: Staging
+
+tags:
+  - name: Auth
+  - name: Stores
+  - name: Lottery
+  - name: Payments
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: ユーザー登録
+      security: []
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignUpRequest"
+      responses:
+        "201":
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: ログイン
+      security: []
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: 自分の情報取得
+      operationId: getMe
+      responses:
+        "200":
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /stores:
+    get:
+      tags: [Stores]
+      summary: 実施店舗一覧
+      description: lat/lng/radius(m)を指定して近隣店舗を取得
+      operationId: listStores
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+        - name: radius
+          in: query
+          required: true
+          description: 検索半径（メートル）
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50000
+            default: 1000
+      responses:
+        "200":
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Store"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /stores/{storeId}:
+    get:
+      tags: [Stores]
+      summary: 店舗詳細
+      operationId: getStoreById
+      parameters:
+        - $ref: "#/components/parameters/StoreIdPath"
+      responses:
+        "200":
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /stores/{storeId}/inventories:
+    get:
+      tags: [Stores]
+      summary: 店舗の景品在庫一覧
+      operationId: listStoreInventories
+      parameters:
+        - $ref: "#/components/parameters/StoreIdPath"
+      responses:
+        "200":
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [storeId, items]
+                properties:
+                  storeId:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Inventory"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /lottery/draw:
+    post:
+      tags: [Lottery]
+      summary: くじを引く
+      description: |
+        抽選実行API。
+        1) idempotencyKey重複確認
+        2) GPS範囲検証（100m以内）
+        3) Mock Location検知
+        4) 決済状態確認
+        5) 在庫条件付き更新（remainingCount > 0 AND version一致）
+      operationId: drawLottery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LotteryDrawRequest"
+      responses:
+        "200":
+          description: 抽選成功（新規または冪等リプレイ）
+          headers:
+            X-Idempotent-Replay:
+              description: trueの場合は既存結果を返却
+              schema:
+                type: boolean
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LotteryDrawResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          description: 決済未完了
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: PAYMENT_REQUIRED
+                message: Complete payment before drawing.
+        "403":
+          description: 位置情報不正または範囲外
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                outOfRange:
+                  value:
+                    code: OUT_OF_RANGE
+                    message: You must be within 100m of the store.
+                mockDetected:
+                  value:
+                    code: MOCK_LOCATION_DETECTED
+                    message: Invalid location signal detected.
+        "409":
+          description: 競合（同時更新）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: INVENTORY_CONFLICT
+                message: Please retry draw.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /lottery/results:
+    get:
+      tags: [Lottery]
+      summary: 自分の当選履歴
+      operationId: listLotteryResults
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: nextToken
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LotteryResult"
+                  nextToken:
+                    type: string
+                    nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /lottery/results/{resultId}:
+    get:
+      tags: [Lottery]
+      summary: 当選結果詳細
+      operationId: getLotteryResultById
+      parameters:
+        - $ref: "#/components/parameters/ResultIdPath"
+      responses:
+        "200":
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LotteryResultDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /payments/create:
+    post:
+      tags: [Payments]
+      summary: 決済開始（モック）
+      operationId: createPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "201":
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /payments/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: 決済状態確認（モック）
+      operationId: getPaymentById
+      parameters:
+        - $ref: "#/components/parameters/PaymentIdPath"
+      responses:
+        "200":
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    StoreIdPath:
+      name: storeId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: store-001
+    ResultIdPath:
+      name: resultId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: result-xyz789
+    PaymentIdPath:
+      name: paymentId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: pay-abc123
+
+  responses:
+    BadRequest:
+      description: 不正なリクエスト
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: BAD_REQUEST
+            message: Invalid request parameters.
+    Unauthorized:
+      description: 認証エラー
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: UNAUTHORIZED
+            message: Missing or invalid token.
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: NOT_FOUND
+            message: Resource not found.
+    TooManyRequests:
+      description: レート制限超過
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: TOO_MANY_REQUESTS
+            message: Rate limit exceeded.
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    User:
+      type: object
+      required: [userId, displayName, email, createdAt]
+      properties:
+        userId:
+          type: string
+          description: Cognito sub
+          example: 8d4f9cb6-3d65-4c9b-8ba1-50d0f4ec0a84
+        displayName:
+          type: string
+          maxLength: 50
+          example: taro
+        email:
+          type: string
+          format: email
+          example: taro@example.com
+        createdAt:
+          type: string
+          format: date-time
+
+    SignUpRequest:
+      type: object
+      required: [displayName, email, password]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+          nullable: true
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          description: seconds
+          example: 3600
+        user:
+          $ref: "#/components/schemas/User"
+
+    Store:
+      type: object
+      required:
+        [storeId, storeName, address, latitude, longitude, geohash, isActive]
+      properties:
+        storeId:
+          type: string
+          example: store-001
+        storeName:
+          type: string
+          example: Tokyo Station Store
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        geohash:
+          type: string
+        isActive:
+          type: boolean
+        distanceMeters:
+          type: number
+          format: double
+          nullable: true
+          description: 検索時のみ返すことがある
+
+    Inventory:
+      type: object
+      required:
+        [storeId, prizeGrade, prizeName, totalCount, remainingCount, version]
+      properties:
+        storeId:
+          type: string
+        prizeGrade:
+          $ref: "#/components/schemas/PrizeGrade"
+        prizeName:
+          type: string
+          example: Figure
+        totalCount:
+          type: integer
+          minimum: 0
+        remainingCount:
+          type: integer
+          minimum: 0
+        version:
+          type: integer
+          minimum: 0
+
+    PrizeGrade:
+      type: string
+      enum: [A, B, C, D, E, F]
+
+    LotteryStatus:
+      type: string
+      enum: [PENDING, WON, LOST, RECEIVED]
+
+    LotteryDrawRequest:
+      type: object
+      required: [storeId, latitude, longitude, paymentId, idempotencyKey]
+      properties:
+        storeId:
+          type: string
+          example: store-001
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        paymentId:
+          type: string
+          example: pay-abc123
+        idempotencyKey:
+          type: string
+          format: uuid
+          description: 同一抽選要求の重複防止キー
+
+    LotteryDrawResponse:
+      type: object
+      required: [resultId, status, prizeGrade, prizeName, message, createdAt]
+      properties:
+        resultId:
+          type: string
+          example: result-xyz789
+        status:
+          $ref: "#/components/schemas/LotteryStatus"
+        prizeGrade:
+          $ref: "#/components/schemas/PrizeGrade"
+        prizeName:
+          type: string
+          nullable: true
+          example: Figure
+        message:
+          type: string
+          example: Congratulations! You won A prize.
+        createdAt:
+          type: string
+          format: date-time
+
+    LotteryResult:
+      type: object
+      required:
+        [resultId, userId, storeId, prizeGrade, status, paymentId, createdAt]
+      properties:
+        resultId:
+          type: string
+        userId:
+          type: string
+        storeId:
+          type: string
+        prizeGrade:
+          $ref: "#/components/schemas/PrizeGrade"
+        status:
+          $ref: "#/components/schemas/LotteryStatus"
+        paymentId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    LotteryResultDetail:
+      allOf:
+        - $ref: "#/components/schemas/LotteryResult"
+        - type: object
+          properties:
+            prizeName:
+              type: string
+              nullable: true
+            idempotencyKey:
+              type: string
+              format: uuid
+            store:
+              $ref: "#/components/schemas/Store"
+
+    CreatePaymentRequest:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+          description: smallest currency unit (e.g. JPY)
+          example: 700
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: JPY
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          nullable: true
+
+    Payment:
+      type: object
+      required: [paymentId, status, amount, currency, createdAt]
+      properties:
+        paymentId:
+          type: string
+          example: pay-abc123
+        status:
+          type: string
+          enum: [CREATED, PENDING, PAID, FAILED, CANCELED]
+        amount:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          example: JPY
+        createdAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+
+x-non-functional-requirements:
+  performance:
+    apiP95Ms: 500
+    lotteryApiP95Ms: 1000
+    concurrentUsersTarget: 100
+  availability:
+    lambdaRetry: enabled
+    dynamodb:
+      capacityMode: on-demand
+      pointInTimeRecovery: true
+    logs: cloudwatch
+    backup:
+      target: s3
+      frequency: daily
+      priority: P2
+  security:
+    auth: cognito-jwt
+    transport: https-only
+    inputValidation: lambda-all-params
+    cors: flutter-origin-only
+    throttling: 10 req/sec per user
