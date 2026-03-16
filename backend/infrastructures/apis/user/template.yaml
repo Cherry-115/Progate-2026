@@ -1,0 +1,139 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Auth:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Auth
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /auth/signup:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Signup.Arn}/invocations
+              responses: {}
+          /auth/me:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${me.Arn}/invocations
+              responses: {}
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${login.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  Signup:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: Signup
+      CodeUri: src/signup
+      Runtime: provided.al2023
+      MemorySize: 128
+      Timeout: 30
+      Tracing: Active
+      Events:
+        AuthPOSTauthsignup:
+          Type: Api
+          Properties:
+            Path: /auth/signup
+            Method: POST
+            RestApiId: !Ref Auth
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref User
+          USER_TABLE_ARN: !GetAtt User.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref User
+  SignupLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Signup}
+  me:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: me
+      CodeUri: src/me
+      Runtime: provided.al2023
+      MemorySize: 128
+      Timeout: 30
+      Tracing: Active
+      Events:
+        AuthPOSTauthme:
+          Type: Api
+          Properties:
+            Path: /auth/me
+            Method: POST
+            RestApiId: !Ref Auth
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref User
+          USER_TABLE_ARN: !GetAtt User.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref User
+  meLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${me}
+  User:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  login:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: login
+      CodeUri: src/login
+      Runtime: provided.al2023
+      MemorySize: 128
+      Timeout: 30
+      Tracing: Active
+      Events:
+        AuthGETauthme:
+          Type: Api
+          Properties:
+            Path: /auth/me
+            Method: GET
+            RestApiId: !Ref Auth
+      Environment: {}
+      Architectures:
+        - arm64
+  loginLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${login}
