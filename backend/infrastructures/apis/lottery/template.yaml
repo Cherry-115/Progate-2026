@@ -1,0 +1,142 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  lottery:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: lottery
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /lottery/results:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${results.Arn}/invocations
+              responses: {}
+          /lottery/results/{resultId}:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${result.Arn}/invocations
+              responses: {}
+          /lottery/draw:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${draw.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  results:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: results
+      CodeUri: src/results
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        lotteryGETlotteryresults:
+          Type: Api
+          Properties:
+            Path: /lottery/results
+            Method: GET
+            RestApiId: !Ref lottery
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME: !Ref lotteryResults
+          LOTTERYRESULTS_TABLE_ARN: !GetAtt lotteryResults.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref lotteryResults
+  resultsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${results}
+  result:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: result
+      CodeUri: src/Function
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME: !Ref lotteryResults
+          LOTTERYRESULTS_TABLE_ARN: !GetAtt lotteryResults.Arn
+      Events:
+        lotteryGETlotteryresultsresultId:
+          Type: Api
+          Properties:
+            Path: /lottery/results/{resultId}
+            Method: GET
+            RestApiId: !Ref lottery
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref lotteryResults
+  resultLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${result}
+  draw:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: draw
+      CodeUri: src/Function2
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME: !Ref lotteryResults
+          LOTTERYRESULTS_TABLE_ARN: !GetAtt lotteryResults.Arn
+      Events:
+        lotteryPOSTlotterydraw:
+          Type: Api
+          Properties:
+            Path: /lottery/draw
+            Method: POST
+            RestApiId: !Ref lottery
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref lotteryResults
+  drawLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${draw}
+  lotteryResults:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
