@@ -19,3 +19,13 @@ RUN curl --output /tmp/localstack-cli-4.14.0-linux-arm64-onefile.tar.gz \
 && tar xvzf /tmp/localstack-cli-4.14.0-linux-*-onefile.tar.gz -C /usr/local/bin \
 && rm -rf /tmp/localstack-cli-4.14.0-linux-*-onefile.tar.gz
 
+RUN  rm -rf /usr/local/go && wget -O "/tmp/go1.26.1.linux-arm64.tar.gz" https://go.dev/dl/go1.26.1.linux-arm64.tar.gz && tar -C /usr/local -xzf /tmp/go1.26.1.linux-arm64.tar.gz && export PATH=$PATH:/usr/local/go/bin
+
+# specify the Oh My Zsh version string
+ARG OMZ_VERSION=master
+
+# install ohmyzsh
+RUN BRANCH=${OMZ_VERSION} \
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/${OMZ_VERSION}/tools/install.sh)" "" \
+    --unattended
+
