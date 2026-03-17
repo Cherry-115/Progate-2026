@@ -42,6 +42,7 @@ Resources:
         - Stack ${AWS::StackName} Function ${ResourceName}
         - ResourceName: Signup
       CodeUri: src/signup
+      Handler: bootstrap
       Runtime: provided.al2023
       MemorySize: 128
       Timeout: 30
@@ -62,6 +63,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref User
+    Metadata:
+      BuildMethod: go1.x
   SignupLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -94,6 +97,9 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref User
+      Handler: bootstrap
+    Metadata:
+      BuildMethod: go1.x
   meLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -132,6 +138,9 @@ Resources:
       Environment: {}
       Architectures:
         - arm64
+      Handler: bootstrap
+    Metadata:
+      BuildMethod: go1.x
   loginLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
