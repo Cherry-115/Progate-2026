@@ -7,11 +7,47 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: id
+        - AttributeName: result_id
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: id
+        - AttributeName: result_id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  Inventories:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: store_id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: store_id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  Users:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  Stores:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: store_id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: store_id
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
@@ -23,6 +59,24 @@ Outputs:
     Export:
       # APIスタックから読み込むためのグローバルに一意なエクスポート名
       Name: LotteryResultsTableName
+
+  InventoriesTableName:
+    Description: DynamoDB Table Name for Inventories
+    Value: !Ref Inventories
+    Export:
+      Name: InventoriesTableName
+
+  UsersTableName:
+    Description: DynamoDB Table Name for Users
+    Value: !Ref Users
+    Export:
+      Name: UsersTableName
+
+  StoresTableName:
+    Description: DynamoDB Table Name for Stores
+    Value: !Ref Stores
+    Export:
+      Name: StoresTableName
 
   LotteryResultsTableArn:
     Description: DynamoDB Table ARN for Lottery Results

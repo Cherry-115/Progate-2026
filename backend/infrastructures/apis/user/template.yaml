@@ -56,13 +56,6 @@ Resources:
             RestApiId: !Ref Auth
       Architectures:
         - arm64
-      Environment:
-        Variables:
-          USER_TABLE_NAME: !Ref User
-          USER_TABLE_ARN: !GetAtt User.Arn
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref User
     Metadata:
       BuildMethod: go1.x
   SignupLogGroup:
@@ -90,13 +83,6 @@ Resources:
             RestApiId: !Ref Auth
       Architectures:
         - arm64
-      Environment:
-        Variables:
-          USER_TABLE_NAME: !Ref User
-          USER_TABLE_ARN: !GetAtt User.Arn
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref User
       Handler: bootstrap
     Metadata:
       BuildMethod: go1.x
@@ -105,18 +91,6 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${me}
-  User:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
   login:
     Type: AWS::Serverless::Function
     Properties:
@@ -135,16 +109,9 @@ Resources:
             Path: /auth/me
             Method: GET
             RestApiId: !Ref Auth
-      Environment:
-        Variables:
-          USER_TABLE_NAME: !Ref User
-          USER_TABLE_ARN: !GetAtt User.Arn
       Architectures:
         - arm64
       Handler: bootstrap
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref User
     Metadata:
       BuildMethod: go1.x
   loginLogGroup:
