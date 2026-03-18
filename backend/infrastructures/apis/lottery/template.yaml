@@ -38,6 +38,8 @@ Resources:
         MaxAge: 5
   results:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
     Properties:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName}
@@ -58,11 +60,12 @@ Resources:
         - arm64
       Environment:
         Variables:
-          LOTTERYRESULTS_TABLE_NAME: !Ref lotteryResults
-          LOTTERYRESULTS_TABLE_ARN: !GetAtt lotteryResults.Arn
+          LOTTERYRESULTS_TABLE_NAME: !ImportValue LotteryResultsTableName
+          LOTTERYRESULTS_TABLE_ARN: !ImportValue LotteryResultsTableArn
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref lotteryResults
+            TableName: !ImportValue LotteryResultsTableName
+      Handler: bootstap
   resultsLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -70,19 +73,17 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${results}
   result:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
     Properties:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName}
         - ResourceName: result
-      CodeUri: src/Function
+      CodeUri: src/result
       Runtime: provided.al2023
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
-      Environment:
-        Variables:
-          LOTTERYRESULTS_TABLE_NAME: !Ref lotteryResults
-          LOTTERYRESULTS_TABLE_ARN: !GetAtt lotteryResults.Arn
       Events:
         lotteryGETlotteryresultsresultId:
           Type: Api
@@ -90,9 +91,16 @@ Resources:
             Path: /lottery/results/{resultId}
             Method: GET
             RestApiId: !Ref lottery
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME: !ImportValue LotteryResultsTableName
+          LOTTERYRESULTS_TABLE_ARN: !ImportValue LotteryResultsTableArn
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref lotteryResults
+            TableName: !ImportValue LotteryResultsTableName
+      Architectures:
+        - arm64
+      Handler: bootstrap
   resultLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -100,19 +108,17 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${result}
   draw:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
     Properties:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName}
         - ResourceName: draw
-      CodeUri: src/Function2
+      CodeUri: src/draw
       Runtime: provided.al2023
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
-      Environment:
-        Variables:
-          LOTTERYRESULTS_TABLE_NAME: !Ref lotteryResults
-          LOTTERYRESULTS_TABLE_ARN: !GetAtt lotteryResults.Arn
       Events:
         lotteryPOSTlotterydraw:
           Type: Api
@@ -120,23 +126,18 @@ Resources:
             Path: /lottery/draw
             Method: POST
             RestApiId: !Ref lottery
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME: !ImportValue LotteryResultsTableName
+          LOTTERYRESULTS_TABLE_ARN: !ImportValue LotteryResultsTableArn
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref lotteryResults
+            TableName: !ImportValue LotteryResultsTableName
+      Architectures:
+        - arm64
+      Handler: bootstrap
   drawLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${draw}
-  lotteryResults:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES

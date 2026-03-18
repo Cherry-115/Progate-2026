@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: DynamoDB Stack for Lottery
+Resources:
+  lotteryResults:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+Outputs:
+  LotteryResultsTableName:
+    Description: DynamoDB Table Name for Lottery Results
+    Value:
+      Ref: lotteryResults
+    Export:
+      Name: LotteryResultsTableName
+  LotteryResultsTableArn:
+    Description: DynamoDB Table ARN for Lottery Results
+    Value:
+      Fn::GetAtt:
+      - lotteryResults
+      - Arn
+    Export:
+      Name: LotteryResultsTableArn

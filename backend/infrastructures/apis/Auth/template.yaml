@@ -1,0 +1,10 @@
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AliasAttributes:
+        - email
+        - preferred_username
+      UserPoolName: !Sub ${AWS::StackName}-UserPool

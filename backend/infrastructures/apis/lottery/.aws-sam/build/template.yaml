@@ -1,0 +1,170 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  lottery:
+    Type: AWS::Serverless::Api
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Name:
+        Fn::Sub:
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: lottery
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /lottery/results:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${results.Arn}/invocations
+              responses: {}
+          /lottery/results/{resultId}:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${result.Arn}/invocations
+              responses: {}
+          /lottery/draw:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${draw.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  results:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+      SamResourceId: results
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: results
+      CodeUri: results
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        lotteryGETlotteryresults:
+          Type: Api
+          Properties:
+            Path: /lottery/results
+            Method: GET
+            RestApiId:
+              Ref: lottery
+      Architectures:
+      - arm64
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME:
+            Fn::ImportValue: LotteryResultsTableName
+          LOTTERYRESULTS_TABLE_ARN:
+            Fn::ImportValue: LotteryResultsTableArn
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Fn::ImportValue: LotteryResultsTableName
+      Handler: bootstap
+  resultsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${results}
+  result:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+      SamResourceId: result
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: result
+      CodeUri: result
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        lotteryGETlotteryresultsresultId:
+          Type: Api
+          Properties:
+            Path: /lottery/results/{resultId}
+            Method: GET
+            RestApiId:
+              Ref: lottery
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME:
+            Fn::ImportValue: LotteryResultsTableName
+          LOTTERYRESULTS_TABLE_ARN:
+            Fn::ImportValue: LotteryResultsTableArn
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Fn::ImportValue: LotteryResultsTableName
+      Architectures:
+      - arm64
+      Handler: bootstrap
+  resultLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${result}
+  draw:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+      SamResourceId: draw
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: draw
+      CodeUri: draw
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        lotteryPOSTlotterydraw:
+          Type: Api
+          Properties:
+            Path: /lottery/draw
+            Method: POST
+            RestApiId:
+              Ref: lottery
+      Environment:
+        Variables:
+          LOTTERYRESULTS_TABLE_NAME:
+            Fn::ImportValue: LotteryResultsTableName
+          LOTTERYRESULTS_TABLE_ARN:
+            Fn::ImportValue: LotteryResultsTableArn
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Fn::ImportValue: LotteryResultsTableName
+      Architectures:
+      - arm64
+      Handler: bootstrap
+  drawLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${draw}

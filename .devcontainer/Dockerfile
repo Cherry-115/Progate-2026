@@ -24,6 +24,8 @@ RUN  rm -rf /usr/local/go \
 && tar -C /usr/local -xzf /tmp/go1.26.1.linux-arm64.tar.gz \
 && export PATH=$PATH:/usr/local/go/bin
 
+CMD [ "export", "PATH=\$PATH:/usr/local/go/bin" ]
+
 # specify the Oh My Zsh version string
 ARG OMZ_VERSION=master
 

@@ -135,10 +135,16 @@ Resources:
             Path: /auth/me
             Method: GET
             RestApiId: !Ref Auth
-      Environment: {}
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref User
+          USER_TABLE_ARN: !GetAtt User.Arn
       Architectures:
         - arm64
       Handler: bootstrap
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref User
     Metadata:
       BuildMethod: go1.x
   loginLogGroup:
