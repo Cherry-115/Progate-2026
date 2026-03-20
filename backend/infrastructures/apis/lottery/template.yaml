@@ -130,9 +130,13 @@ Resources:
         Variables:
           LOTTERYRESULTS_TABLE_NAME: !ImportValue LotteryResultsTableName
           LOTTERYRESULTS_TABLE_ARN: !ImportValue LotteryResultsTableArn
+          INVENTORIES_TABLE_NAME: !ImportValue InventoriesTableName
+          INVENTORIES_TABLE_ARN: !ImportValue InventoriesTableArn
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !ImportValue LotteryResultsTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue InventoriesTableName
       Architectures:
         - arm64
       Handler: bootstrap
