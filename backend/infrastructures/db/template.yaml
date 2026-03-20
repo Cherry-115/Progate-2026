@@ -9,10 +9,27 @@ Resources:
       AttributeDefinitions:
         - AttributeName: result_id
           AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: store_id
+          AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
         - AttributeName: result_id
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StoreIndex
+          KeySchema:
+            - AttributeName: store_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
   Inventories:
@@ -21,10 +38,14 @@ Resources:
       AttributeDefinitions:
         - AttributeName: store_id
           AttributeType: S
+        - AttributeName: prize_grade
+          AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
         - AttributeName: store_id
           KeyType: HASH
+        - AttributeName: prize_grade
+          KeyType: RANGE
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
   Users:
@@ -45,10 +66,19 @@ Resources:
       AttributeDefinitions:
         - AttributeName: store_id
           AttributeType: S
+        - AttributeName: geohash
+          AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
         - AttributeName: store_id
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: GeohashIndex
+          KeySchema:
+            - AttributeName: geohash
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
 

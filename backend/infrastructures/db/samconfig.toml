@@ -4,10 +4,9 @@ version = 0.1
 stack_name = "sam-app"
 resolve_s3 = true
 s3_prefix = "sam-app"
-region = "ap-notheast-1"
-profile = "localstack"
+profile = "aws_hackason"
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
 
 [default.global.parameters]
-region = "ap-notheast-1"
+region = "ap-northeast-1"
