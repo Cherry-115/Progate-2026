@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"os"
 	"time"
 
@@ -50,6 +51,7 @@ type User struct {
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var body SignUpRequest
 	if err := json.Unmarshal([]byte(req.Body), &body); err != nil {
+		log.Printf("Error unmarshaling request body: %v\n", err)
 		return events.APIGatewayProxyResponse{StatusCode: 400, Body: `{"code":"BAD_REQUEST","message":"Invalid body"}`}, nil
 	}
 
@@ -63,6 +65,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		},
 	})
 	if err != nil {
+		log.Printf("Error signing up user to Cognito: %v\n", err)
 		return events.APIGatewayProxyResponse{StatusCode: 400, Body: `{"code":"BAD_REQUEST","message":"SignUp failed"}`}, nil
 	}
 
@@ -98,6 +101,16 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	}, nil
 }
 
+func loggingHandler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log.Printf("Request: %+v\n", req)
+	resp, err := handler(ctx, req)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+	log.Printf("Response: %+v\n", resp)
+	return resp, err
+}
+
 func main() {
-	lambda.Start(handler)
+	lambda.Start(loggingHandler)
 }

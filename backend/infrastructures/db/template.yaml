@@ -113,3 +113,21 @@ Outputs:
     Value: !GetAtt lotteryResults.Arn
     Export:
       Name: LotteryResultsTableArn
+      
+  InventoriesTableArn:
+    Description: DynamoDB Table ARN for Inventories
+    Value: !GetAtt Inventories.Arn
+    Export:
+      Name: InventoriesTableArn
+
+  UsersTableArn:
+    Description: DynamoDB Table ARN for Users
+    Value: !GetAtt Users.Arn
+    Export:
+      Name: UsersTableArn
+
+  StoresTableArn:
+    Description: DynamoDB Table ARN for Stores
+    Value: !GetAtt Stores.Arn
+    Export:
+      Name: StoresTableArn

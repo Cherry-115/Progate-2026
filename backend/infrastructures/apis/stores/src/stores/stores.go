@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -61,6 +62,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	lng, err2 := strconv.ParseFloat(lngStr, 64)
 	radius, _ := strconv.ParseFloat(radiusStr, 64)
 	if err1 != nil || err2 != nil {
+		log.Printf("Error parsing lat/lng: err1=%v, err2=%v\n", err1, err2)
 		return events.APIGatewayProxyResponse{StatusCode: 400, Body: `{"code":"BAD_REQUEST","message":"Invalid lat/lng"}`}, nil
 	}
 	if radius == 0 {
@@ -71,6 +73,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		TableName: &storesTable,
 	})
 	if err != nil {
+		log.Printf("Error scanning stores table: %v\n", err)
 		return events.APIGatewayProxyResponse{StatusCode: 500, Body: `{"code":"INTERNAL_ERROR","message":"Failed to scan stores"}`}, nil
 	}
 
@@ -101,6 +104,16 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	}, nil
 }
 
+func loggingHandler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log.Printf("Request: %+v\n", req)
+	resp, err := handler(ctx, req)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+	log.Printf("Response: %+v\n", resp)
+	return resp, err
+}
+
 func main() {
-	lambda.Start(handler)
+	lambda.Start(loggingHandler)
 }

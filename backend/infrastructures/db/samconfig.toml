@@ -1,9 +1,9 @@
 version = 0.1
 
 [default.deploy.parameters]
-stack_name = "sam-app"
+stack_name = "progate-2026-backend-dynamodb"
 resolve_s3 = true
-s3_prefix = "sam-app"
+s3_prefix = "progate-2026-backend-dynamodb"
 profile = "aws_hackason"
 capabilities = "CAPABILITY_IAM"
 image_repositories = []

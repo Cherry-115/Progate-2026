@@ -1,9 +1,9 @@
 version = 0.1
 
 [default.deploy.parameters]
-stack_name = "test-6"
+stack_name = "progate-2026-backend-apis-lottery"
 resolve_s3 = true
-s3_prefix = "test-6"
+s3_prefix = "progate-2026-backend-apis-lottery"
 profile = "aws_hackason"
 capabilities = "CAPABILITY_IAM"
 image_repositories = []

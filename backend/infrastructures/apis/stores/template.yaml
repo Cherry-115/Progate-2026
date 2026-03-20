@@ -51,7 +51,12 @@ Resources:
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
-      Environment: {}
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
       Architectures:
         - arm64
       Handler: bootstrap
@@ -83,7 +88,12 @@ Resources:
       Architectures:
         - arm64
       Handler: bootstrap
-      Environment: {}
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
       Events:
         StoresGETstorestoreid:
           Type: Api
@@ -112,7 +122,15 @@ Resources:
       Architectures:
         - arm64
       Handler: bootstrap
-      Environment: {}
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+          INVENTORIES_TABLE_NAME: !ImportValue InventoriesTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue InventoriesTableName
       Events:
         StoresGETstorestoreidinventorie:
           Type: Api

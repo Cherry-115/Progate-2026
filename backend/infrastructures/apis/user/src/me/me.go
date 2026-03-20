@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -59,6 +60,9 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		Key: map[string]types.AttributeValue{"user_id": av},
 	})
 	if err != nil || out.Item == nil {
+		if err != nil {
+			log.Printf("Error getting user: %v\n", err)
+		}
 		return events.APIGatewayProxyResponse{
 			StatusCode: 404,
 			Body: `{"code":"NOT_FOUND","message":"User not found"}`,
@@ -80,6 +84,16 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	}, nil
 }
 
+func loggingHandler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log.Printf("Request: %+v\n", req)
+	resp, err := handler(ctx, req)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+	log.Printf("Response: %+v\n", resp)
+	return resp, err
+}
+
 func main() {
-	lambda.Start(handler)
+	lambda.Start(loggingHandler)
 }

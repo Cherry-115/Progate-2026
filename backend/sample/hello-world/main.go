@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -23,6 +24,16 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}, nil
 }
 
+func loggingHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log.Printf("Request: %+v\n", request)
+	resp, err := handler(request)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+	log.Printf("Response: %+v\n", resp)
+	return resp, err
+}
+
 func main() {
-	lambda.Start(handler)
+	lambda.Start(loggingHandler)
 }

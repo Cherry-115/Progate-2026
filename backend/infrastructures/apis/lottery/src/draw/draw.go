@@ -90,15 +90,15 @@ userId = "UNKNOWN_USER"
 var reqBody DrawRequest
 err := json.Unmarshal([]byte(request.Body), &reqBody)
 if err != nil || reqBody.StoreID == "" || reqBody.IdempotencyKey == "" {
-return clientError(400, "Invalid request body")
+return clientError(400, "Invalid request body", err)
 }
 
 inventories, err := getInventoriesByStore(ctx, reqBody.StoreID)
 if err != nil {
-return clientError(500, "Failed to get store inventories")
+return clientError(500, "Failed to get store inventories", err)
 }
 if len(inventories) == 0 {
-return clientError(404, "No inventory found for store")
+return clientError(404, "No inventory found for store", nil)
 }
 
 totalRemaining := 0
@@ -106,14 +106,14 @@ for _, inv := range inventories {
 totalRemaining += inv.RemainingCount
 }
 if totalRemaining <= 0 {
-return clientError(400, "All prizes are sold out")
+return clientError(400, "All prizes are sold out", nil)
 }
 
 winningInv := selectPrize(inventories, totalRemaining)
 
 err = updateInventoryTransaction(ctx, winningInv)
 if err != nil {
-return clientError(409, "Collision or out of stock, please retry")
+return clientError(409, "Collision or out of stock, please retry", err)
 }
 
 resultID := uuid.New().String()
@@ -129,7 +129,7 @@ IdempotencyKey: reqBody.IdempotencyKey,
 
 err = saveResult(ctx, res)
 if err != nil {
-return clientError(500, "Failed to record result")
+return clientError(500, "Failed to record result", err)
 }
 
 resp := DrawResponse{
@@ -229,7 +229,12 @@ _, err = dynamoClient.PutItem(ctx, input)
 return err
 }
 
-func clientError(status int, message string) (events.APIGatewayProxyResponse, error) {
+func clientError(status int, message string, err error) (events.APIGatewayProxyResponse, error) {
+if err != nil {
+	log.Printf("Client error %d: %s, err: %v\n", status, message, err)
+} else {
+	log.Printf("Client error %d: %s\n", status, message)
+}
 resp := ErrorResponse{Error: message}
 b, _ := json.Marshal(resp)
 return events.APIGatewayProxyResponse{
@@ -242,6 +247,16 @@ Body: string(b),
 }, nil
 }
 
+func loggingHandler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log.Printf("Request: %+v\n", req)
+	resp, err := handler(ctx, req)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+	log.Printf("Response: %+v\n", resp)
+	return resp, err
+}
+
 func main() {
-lambda.Start(handler)
+	lambda.Start(loggingHandler)
 }
