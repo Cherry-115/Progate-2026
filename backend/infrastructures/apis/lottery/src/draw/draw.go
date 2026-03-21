@@ -56,9 +56,9 @@ type ErrorResponse struct {
 
 type LotteryResult struct {
 	ResultID       string `dynamodbav:"result_id"`
-	UserID         string `dynamodbav:"userId"`
-	StoreID        string `dynamodbav:"storeId"`
-	PrizeGrade     string `dynamodbav:"prizeGrade"`
+	UserID         string `dynamodbav:"user_id"`
+	StoreID        string `dynamodbav:"store_id"`
+	PrizeGrade     string `dynamodbav:"prize_grade"`
 	Status         string `dynamodbav:"status"`
 	PaymentID      string `dynamodbav:"paymentId"`
 	CreatedAt      string `dynamodbav:"createdAt"`
@@ -67,7 +67,7 @@ type LotteryResult struct {
 
 type Inventory struct {
 	StoreID        string `dynamodbav:"store_id"`
-	PrizeGrade     string `dynamodbav:"prizeGrade"`
+	PrizeGrade     string `dynamodbav:"prize_grade"`
 	PrizeName      string `dynamodbav:"prizeName"`
 	TotalCount     int    `dynamodbav:"totalCount"`
 	RemainingCount int    `dynamodbav:"remainingCount"`

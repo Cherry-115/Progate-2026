@@ -20,6 +20,13 @@ Resources:
                 type: aws_proxy
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${stores.Arn}/invocations
               responses: {}
+          /stores-all:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${storesall.Arn}/invocations
+              responses: {}
           /store/{storeid}:
             get:
               x-amazon-apigateway-integration:
@@ -70,8 +77,44 @@ Resources:
   storesLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${stores}
+  storesall:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: storesall
+      CodeUri: src/storesall
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Events:
+        StoresGETstoresall:
+          Type: Api
+          Properties:
+            Path: /stores-all
+            Method: GET
+            RestApiId: !Ref Stores
+  storesallLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${storesall}
   store:
     Type: AWS::Serverless::Function
     Metadata:
@@ -104,6 +147,7 @@ Resources:
   storeLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${store}
   inventorie:
@@ -141,6 +185,7 @@ Resources:
   inventorieLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${inventorie}
 Metadata:
@@ -149,5 +194,6 @@ Metadata:
       Label: Group
       Members:
         - stores
+        - storesall
         - store
         - inventorie

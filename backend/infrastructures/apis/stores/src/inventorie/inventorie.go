@@ -32,7 +32,7 @@ func init() {
 
 type Inventory struct {
 	StoreID        string `json:"storeId" dynamodbav:"store_id"`
-	PrizeGrade     string `json:"prizeGrade" dynamodbav:"prizeGrade"`
+	PrizeGrade     string `json:"prizeGrade" dynamodbav:"prize_grade"`
 	PrizeName      string `json:"prizeName" dynamodbav:"prizeName"`
 	TotalCount     int    `json:"totalCount" dynamodbav:"totalCount"`
 	RemainingCount int    `json:"remainingCount" dynamodbav:"remainingCount"`
@@ -57,8 +57,8 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		log.Printf("Error fetching inventories: %v\n", err)
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
-			Body: `{"code":"INTERNAL_ERROR","message":"Failed to fetch inventories"}`,
-			Headers: map[string]string{"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+			Body:       `{"code":"INTERNAL_ERROR","message":"Failed to fetch inventories"}`,
+			Headers:    map[string]string{"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
 		}, nil
 	}
 
@@ -77,7 +77,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Headers: map[string]string{
-			"Content-Type": "application/json",
+			"Content-Type":                "application/json",
 			"Access-Control-Allow-Origin": "*",
 		},
 		Body: string(respBody),
