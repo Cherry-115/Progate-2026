@@ -1,0 +1,199 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Stores:
+    Type: AWS::Serverless::Api
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Stores
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /stores:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${stores.Arn}/invocations
+              responses: {}
+          /stores-all:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${storesall.Arn}/invocations
+              responses: {}
+          /store/{storeid}:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${store.Arn}/invocations
+              responses: {}
+          /store/{storeid}/inventorie:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${inventorie.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  stores:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: stores
+      CodeUri: src/stores
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Events:
+        StoresGETstores:
+          Type: Api
+          Properties:
+            Path: /stores
+            Method: GET
+            RestApiId: !Ref Stores
+  storesLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${stores}
+  storesall:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: storesall
+      CodeUri: src/storesall
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Events:
+        StoresGETstoresall:
+          Type: Api
+          Properties:
+            Path: /stores-all
+            Method: GET
+            RestApiId: !Ref Stores
+  storesallLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${storesall}
+  store:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: store
+      CodeUri: src/store
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
+      Events:
+        StoresGETstorestoreid:
+          Type: Api
+          Properties:
+            Path: /store/{storeid}
+            Method: GET
+            RestApiId: !Ref Stores
+  storeLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${store}
+  inventorie:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: inventorie
+      CodeUri: src/inventorie
+      Runtime: provided.al2023
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Environment:
+        Variables:
+          STORES_TABLE_NAME: !ImportValue StoresTableName
+          INVENTORIES_TABLE_NAME: !ImportValue InventoriesTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue StoresTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue InventoriesTableName
+      Events:
+        StoresGETstorestoreidinventorie:
+          Type: Api
+          Properties:
+            Path: /store/{storeid}/inventorie
+            Method: GET
+            RestApiId: !Ref Stores
+  inventorieLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${inventorie}
+Metadata:
+  AWS::Composer::Groups:
+    Group:
+      Label: Group
+      Members:
+        - stores
+        - storesall
+        - store
+        - inventorie

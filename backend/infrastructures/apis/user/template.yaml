@@ -1,0 +1,121 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Auth:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Auth
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /auth/signup:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Signup.Arn}/invocations
+              responses: {}
+          /auth/me:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${me.Arn}/invocations
+              responses: {}
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${login.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  Signup:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: Signup
+      CodeUri: src/signup
+      Handler: bootstrap
+      Runtime: provided.al2023
+      MemorySize: 128
+      Timeout: 30
+      Tracing: Active
+      Events:
+        AuthPOSTauthsignup:
+          Type: Api
+          Properties:
+            Path: /auth/signup
+            Method: POST
+            RestApiId: !Ref Auth
+      Architectures:
+        - arm64
+    Metadata:
+      BuildMethod: go1.x
+  SignupLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Signup}
+  me:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: me
+      CodeUri: src/me
+      Runtime: provided.al2023
+      MemorySize: 128
+      Timeout: 30
+      Tracing: Active
+      Events:
+        AuthPOSTauthme:
+          Type: Api
+          Properties:
+            Path: /auth/me
+            Method: POST
+            RestApiId: !Ref Auth
+      Architectures:
+        - arm64
+      Handler: bootstrap
+    Metadata:
+      BuildMethod: go1.x
+  meLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${me}
+  login:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: login
+      CodeUri: src/login
+      Runtime: provided.al2023
+      MemorySize: 128
+      Timeout: 30
+      Tracing: Active
+      Events:
+        AuthGETauthme:
+          Type: Api
+          Properties:
+            Path: /auth/me
+            Method: GET
+            RestApiId: !Ref Auth
+      Architectures:
+        - arm64
+      Handler: bootstrap
+    Metadata:
+      BuildMethod: go1.x
+  loginLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${login}

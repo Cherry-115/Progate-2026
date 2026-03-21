@@ -1,0 +1,12 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "progate-2026-backend-apis-stores"
+resolve_s3 = true
+s3_prefix = "progate-2026-backend-apis-stores"
+profile = "aws_hackason"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-northeast-1"
