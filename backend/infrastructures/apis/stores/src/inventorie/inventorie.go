@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -31,7 +32,7 @@ func init() {
 }
 
 type Inventory struct {
-	StoreID        string `json:"storeId" dynamodbav:"store_id"`
+	StoreID        string `json:"store_id" dynamodbav:"store_id"`
 	PrizeGrade     string `json:"prizeGrade" dynamodbav:"prize_grade"`
 	PrizeName      string `json:"prizeName" dynamodbav:"prizeName"`
 	TotalCount     int    `json:"totalCount" dynamodbav:"totalCount"`
@@ -39,9 +40,19 @@ type Inventory struct {
 	Version        int    `json:"version" dynamodbav:"version"`
 }
 
+func extractStoreIDFromPath(path string) (string, bool) {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	for i := 0; i+2 < len(parts); i++ {
+		if parts[i] == "store" && parts[i+2] == "inventorie" && parts[i+1] != "" {
+			return parts[i+1], true
+		}
+	}
+	return "", false
+}
+
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	storeId := req.PathParameters["storeId"]
-	if storeId == "" {
+	storeId, ok := extractStoreIDFromPath(req.Path)
+	if !ok {
 		return events.APIGatewayProxyResponse{StatusCode: 400}, nil
 	}
 
@@ -69,8 +80,8 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	}
 
 	res := map[string]interface{}{
-		"storeId": storeId,
-		"items":   items,
+		"store_id": storeId,
+		"items":    items,
 	}
 
 	respBody, _ := json.Marshal(res)
