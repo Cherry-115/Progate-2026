@@ -1,7 +1,7 @@
 # Progate-2026
 
 Digital Ichiban Kuji（デジタル一番くじ）を題材にした、Flutter/Dart フロントエンドと Go バックエンドで構成されるアプリケーションです。
-フロントエンドは（こちら）[https://github.com/Yuji-ctrl/lotteryAppMobile]
+フロントエンドは[こちら](https://github.com/Yuji-ctrl/lotteryAppMobile)  
 Progateハッカソン powered by AWS（2026/03/10-21）で制作
 https://progate.connpass.com/event/379252/
 
@@ -48,9 +48,9 @@ https://progate.connpass.com/event/379252/
 ```
 
 ## セットアップ
-フロントエンドとバックエンドの統合が完璧にできていないため、ローカルで動かすことは難しいです。
+フロントエンドとバックエンドの統合が完璧にできていないため、ローカルで動かすことは難しいです。  
 バックエンドのみであれば、以下の構成で動くはずです。
-フロント側については(こちら)[https://github.com/Yuji-ctrl/lotteryAppMobile]をご覧ください
+フロント側については[こちら](https://github.com/Yuji-ctrl/lotteryAppMobile)をご覧ください
 
 ### 前提条件
 
